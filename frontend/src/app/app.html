@@ -1,0 +1,55 @@
+<header class="navbar">
+  <h1>⏱️ AutoMinutes Dashboard</h1>
+</header>
+
+<main class="container">
+  <section class="card">
+    <div class="card-header blue">
+      <h2>Add New Meeting</h2>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label>Meeting Title</label>
+        <input type="text" placeholder="e.g., Project Sync & Next Steps">
+      </div>
+      <div class="form-group">
+        <label>Date and Time</label>
+        <input type="datetime-local">
+      </div>
+      <div class="form-group">
+        <label>Attendees (Comma-separated emails)</label>
+        <input type="text" placeholder="e.g., colleague@test.com, sponsor@practice.com">
+      </div>
+      <div class="form-group">
+        <label>Raw Transcript</label>
+        <textarea rows="5" placeholder="Paste the meeting transcript here..."></textarea>
+      </div>
+      <button class="btn btn-blue">Create & Process with AI</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header dark">
+      <h2>Registered Meetings</h2>
+    </div>
+    <div class="card-body">
+      <div class="meeting-item">
+        <div class="meeting-header">
+          <h3>Daily Standup - IT Team</h3>
+          <span class="status status-completed">COMPLETED</span>
+        </div>
+        <p>Quick update on current sprint progress and blocking issues.</p>
+        <small class="text-secondary">Created on: 15.07.2026</small>
+      </div>
+
+      <div class="meeting-item">
+        <div class="meeting-header">
+          <h3>Kickoff Meeting AutoMinutes</h3>
+          <span class="status status-processing">PROCESSING</span>
+        </div>
+        <p>Defining initial requirements, system architecture, and roles.</p>
+        <small class="text-secondary">Created on: 15.07.2026</small>
+      </div>
+    </div>
+  </section>
+</main>
