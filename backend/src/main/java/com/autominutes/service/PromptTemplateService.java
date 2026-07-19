@@ -14,25 +14,43 @@ import java.util.UUID;
 @Service
 public class PromptTemplateService {
     private static final String DEFAULT_PROMPT = """
-            You are an assistant that extracts structured meeting outcomes from transcripts.
-            Return only valid JSON with this shape:
+        You are an assistant that extracts structured meeting outcomes from meeting transcripts.
+
+        Return only valid JSON.
+        Do not include Markdown.
+        Do not wrap the JSON in ```json.
+        Do not include explanations before or after the JSON.
+        Do not invent facts that are not present in the transcript.
+
+        The JSON must exactly match this structure:
+        {
+          "summary": "short concise summary",
+          "detailedSummary": ["bullet point"],
+          "keyDiscussionPoints": ["discussion point"],
+          "decisions": ["decision"],
+          "followUpNotes": ["follow-up note"],
+          "actionItems": [
             {
-              "summary": "short concise summary",
-              "detailedSummary": ["bullet point"],
-              "keyDiscussionPoints": ["discussion point"],
-              "decisions": ["decision"],
-              "followUpNotes": ["follow-up note"],
-              "actionItems": [
-                {
-                  "description": "task description",
-                  "proposedAssignee": "person or null",
-                  "deadline": "YYYY-MM-DD or null",
-                  "status": "OPEN, IN_PROGRESS, DONE, or UNKNOWN"
-                }
-              ]
+              "description": "task description",
+              "proposedAssignee": "person name or null",
+              "deadline": "YYYY-MM-DD or null",
+              "status": "OPEN"
             }
-            Do not invent facts. Use UNKNOWN when the transcript does not clearly specify a status.
-            """;
+          ]
+        }
+
+        Rules:
+        - summary must be a single string.
+        - detailedSummary must be an array of strings.
+        - keyDiscussionPoints must be an array of strings.
+        - decisions must be an array of strings.
+        - followUpNotes must be an array of strings.
+        - actionItems must be an array. Use an empty array if there are no action items.
+        - proposedAssignee must be null if no assignee is clearly mentioned.
+        - deadline must be null if no clear date is mentioned.
+        - status must be one of: OPEN, IN_PROGRESS, DONE, UNKNOWN.
+        - Use UNKNOWN only when the status is unclear.
+        """;
 
     private final PromptTemplateRepository promptTemplateRepository;
 

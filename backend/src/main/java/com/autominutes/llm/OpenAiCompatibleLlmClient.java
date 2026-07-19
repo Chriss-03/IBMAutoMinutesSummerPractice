@@ -36,14 +36,15 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
         }
 
         Map<String, Object> body = Map.of(
-                "model", properties.getModel(),
-                "temperature", properties.getTemperature(),
-                "response_format", Map.of("type", "json_object"),
-                "messages", List.of(
-                        Map.of("role", "system", "content", prompt),
-                        Map.of("role", "user", "content", transcript)
-                )
-        );
+            "model", properties.getModel(),
+            "temperature", properties.getTemperature(),
+            "stream", false,
+            "response_format", Map.of("type", "json_object"),
+            "messages", List.of(
+                    Map.of("role", "system", "content", prompt),
+                    Map.of("role", "user", "content", transcript)
+            )
+    );
 
         try {
             String response = restClient.post()
