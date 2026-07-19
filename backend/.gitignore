@@ -7,7 +7,7 @@ target/
 ### macOS ###
 .DS_Store
 
-### Environment / secrets ###
+### Environment ###
 .env
 .env.*
 !.env.example
