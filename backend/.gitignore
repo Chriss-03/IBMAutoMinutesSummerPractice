@@ -4,6 +4,17 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### macOS ###
+.DS_Store
+
+### Environment ###
+.env
+.env.*
+!.env.example
+
+### Logs ###
+*.log
+
 ### STS ###
 .apt_generated
 .classpath
