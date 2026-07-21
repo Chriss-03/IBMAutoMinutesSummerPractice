@@ -1,55 +1,425 @@
-<header class="navbar">
-  <h1>AutoMinutes Dashboard</h1>
-</header>
+<div class="app-shell">
+  <header class="hero">
+    <nav class="topbar">
+      <div class="brand-mark">AM</div>
+      <div>
+        <p class="eyebrow">Meeting intelligence workspace</p>
+        <h1>AutoMinutes</h1>
+      </div>
+      <div class="topbar-spacer"></div>
+      <button class="ghost-button" type="button" (click)="loadMeetings()" [disabled]="loadingMeetings">
+        {{ loadingMeetings ? 'Refreshing…' : 'Refresh' }}
+      </button>
+      <div class="connection-pill" [class.offline]="errorMessage">
+        <span></span>
+        {{ errorMessage ? 'Needs attention' : 'Workspace online' }}
+      </div>
+    </nav>
 
-<main class="container">
-  <section class="card">
-    <div class="card-header blue">
-      <h2>Add New Meeting</h2>
-    </div>
-    <div class="card-body">
-      <div class="form-group">
-        <label>Meeting Title</label>
-        <input type="text" placeholder="e.g., Project Sync & Next Steps">
+    <section class="hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">Capture. Distill. Follow through.</p>
+        <h2>Turn raw meeting transcripts into clean minutes and trackable outcomes.</h2>
+        <p class="hero-text">
+          Create a meeting, add participants, paste the transcript, then generate summaries, decisions and action items from one place.
+        </p>
+        <div class="hero-actions">
+          <button class="primary-button" type="button" (click)="createMeeting(true)" [disabled]="savingMeeting || isProcessing()">
+            <span class="sparkle">✦</span>
+            {{ savingMeeting || isProcessing() ? 'Working…' : 'Create and generate' }}
+          </button>
+          <button class="soft-button" type="button" (click)="createMeeting(false)" [disabled]="savingMeeting">
+            Save meeting only
+          </button>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Date and Time</label>
-        <input type="datetime-local">
+
+      <div class="signal-card">
+        <div class="signal-orbit">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div>
+          <p class="signal-number">{{ meetings.length }}</p>
+          <p class="signal-label">registered meetings</p>
+        </div>
+        <div>
+          <p class="signal-number">{{ openActionCount() }}</p>
+          <p class="signal-label">open actions</p>
+        </div>
+        <div>
+          <p class="signal-number">{{ completedActionCount() }}</p>
+          <p class="signal-label">completed actions</p>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Attendees (Comma-separated emails)</label>
-        <input type="text" placeholder="e.g., colleague@test.com, sponsor@practice.com">
-      </div>
-      <div class="form-group">
-        <label>Raw Transcript</label>
-        <textarea rows="5" placeholder="Paste the meeting transcript here..."></textarea>
-      </div>
-      <button class="btn btn-blue">Create & Process with AI</button>
-    </div>
+    </section>
+  </header>
+
+  <section class="message-stack" *ngIf="errorMessage || successMessage">
+    <div class="notice error" *ngIf="errorMessage">{{ errorMessage }}</div>
+    <div class="notice success" *ngIf="successMessage">{{ successMessage }}</div>
   </section>
 
-  <section class="card">
-    <div class="card-header dark">
-      <h2>Registered Meetings</h2>
-    </div>
-    <div class="card-body">
-      <div class="meeting-item">
-        <div class="meeting-header">
-          <h3>Daily Standup - IT Team</h3>
-          <span class="status status-completed">COMPLETED</span>
+  <main class="workspace">
+    <aside class="panel meeting-list-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Library</p>
+          <h3>Meetings</h3>
         </div>
-        <p>Quick update on current sprint progress and blocking issues.</p>
-        <small class="text-secondary">Created on: 15.07.2026</small>
+        <span class="count-badge">{{ meetings.length }}</span>
       </div>
 
-      <div class="meeting-item">
-        <div class="meeting-header">
-          <h3>Kickoff Meeting AutoMinutes</h3>
-          <span class="status status-processing">PROCESSING</span>
-        </div>
-        <p>Defining initial requirements, system architecture, and roles.</p>
-        <small class="text-secondary">Created on: 15.07.2026</small>
+      <div class="empty-state compact" *ngIf="!loadingMeetings && meetings.length === 0">
+        <div class="empty-icon">◇</div>
+        <p>No meetings yet.</p>
+        <span>Create one from the workspace panel.</span>
       </div>
+
+      <div class="meeting-scroll" *ngIf="meetings.length > 0">
+        <button
+          class="meeting-card"
+          type="button"
+          *ngFor="let meeting of meetings; trackBy: trackById"
+          [class.active]="selectedMeeting?.id === meeting.id"
+          (click)="selectMeeting(meeting)">
+          <span class="meeting-accent"></span>
+          <span class="meeting-title-row">
+            <strong>{{ meeting.title }}</strong>
+            <small class="status-pill" [ngClass]="statusClass(meeting.processingStatus)">
+              {{ isProcessing(meeting) ? 'PROCESSING' : meeting.processingStatus }}
+            </small>
+          </span>
+          <span class="meeting-meta">{{ meeting.meetingDateTime | date:'MMM d, y, HH:mm' }}</span>
+          <span class="meeting-description">{{ meeting.description || 'No description added' }}</span>
+        </button>
+      </div>
+    </aside>
+
+    <section class="panel composer-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">New meeting</p>
+          <h3>Prepare transcript</h3>
+        </div>
+        <button class="micro-button" type="button" (click)="useSampleTranscript()">Use sample</button>
+      </div>
+
+      <div class="form-grid">
+        <label class="field wide">
+          <span>Meeting title</span>
+          <input type="text" [(ngModel)]="meetingDraft.title" placeholder="Weekly product sync" />
+        </label>
+
+        <label class="field">
+          <span>Date and time</span>
+          <input type="datetime-local" [(ngModel)]="meetingDraft.meetingDateTime" />
+        </label>
+
+        <label class="field wide">
+          <span>Description</span>
+          <input type="text" [(ngModel)]="meetingDraft.description" placeholder="Planning, decisions and follow-up tasks" />
+        </label>
+      </div>
+
+      <div class="section-card">
+        <div class="section-title-row">
+          <div>
+            <p class="eyebrow">Participants</p>
+            <h4>People in the room</h4>
+          </div>
+          <button class="micro-button" type="button" (click)="addDraftAttendee()">Add person</button>
+        </div>
+
+        <div class="attendee-grid" *ngFor="let attendee of meetingDraft.attendees; let index = index; trackBy: trackByIndex">
+          <input type="text" [(ngModel)]="attendee.name" placeholder="Name" />
+          <input type="email" [(ngModel)]="attendee.email" placeholder="Email" />
+          <input type="text" [(ngModel)]="attendee.role" placeholder="Role" />
+          <button class="icon-button" type="button" (click)="removeDraftAttendee(index)" aria-label="Remove participant">×</button>
+        </div>
+      </div>
+
+      <label class="field transcript-field">
+        <span>Transcript</span>
+        <textarea [(ngModel)]="meetingDraft.transcript" placeholder="Paste the raw transcript here"></textarea>
+      </label>
+
+      <div class="button-row">
+        <button class="primary-button" type="button" (click)="createMeeting(true)" [disabled]="savingMeeting || isProcessing()">
+          <span class="sparkle">✦</span>
+          {{ savingMeeting || isProcessing() ? 'Working…' : 'Create and generate' }}
+        </button>
+        <button class="soft-button" type="button" (click)="createMeeting(false)" [disabled]="savingMeeting">
+          Save for later
+        </button>
+      </div>
+    </section>
+
+    <section class="detail-column">
+      <section class="panel detail-panel" *ngIf="selectedMeeting; else noSelection">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Selected meeting</p>
+            <h3>{{ selectedMeeting.title }}</h3>
+          </div>
+          <small class="status-pill" [ngClass]="statusClass(selectedMeeting.processingStatus)">
+            {{ isProcessing(selectedMeeting) ? 'PROCESSING' : selectedMeeting.processingStatus }}
+          </small>
+        </div>
+
+        <div class="subtle-loading" *ngIf="loadingDetail">
+          Refreshing meeting workspace…
+        </div>
+
+        <div class="detail-layout">
+          <div class="section-card subdued">
+            <div class="form-grid">
+              <label class="field wide">
+                <span>Title</span>
+                <input type="text" [(ngModel)]="meetingEditDraft.title" />
+              </label>
+              <label class="field">
+                <span>Date and time</span>
+                <input type="datetime-local" [(ngModel)]="meetingEditDraft.meetingDateTime" />
+              </label>
+              <label class="field wide">
+                <span>Description</span>
+                <input type="text" [(ngModel)]="meetingEditDraft.description" />
+              </label>
+            </div>
+
+            <div class="button-row compact-row">
+              <button class="soft-button" type="button" (click)="saveSelectedMeeting()" [disabled]="savingMeeting">Save changes</button>
+              <button class="danger-button" type="button" (click)="deleteSelectedMeeting()">Delete</button>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Participants</p>
+                <h4>{{ attendees.length }} people</h4>
+              </div>
+            </div>
+
+            <div class="people-row" *ngIf="attendees.length > 0">
+              <div class="person-chip" *ngFor="let attendee of attendees; trackBy: trackById">
+                <span>{{ initials(attendee.name) }}</span>
+                <div>
+                  <strong>{{ attendee.name }}</strong>
+                  <small>{{ attendee.role || attendee.email || 'Participant' }}</small>
+                </div>
+                <button type="button" (click)="removeAttendee(attendee)" aria-label="Remove participant">×</button>
+              </div>
+            </div>
+
+            <div class="attendee-grid single">
+              <input type="text" [(ngModel)]="attendeeDraft.name" placeholder="Name" />
+              <input type="email" [(ngModel)]="attendeeDraft.email" placeholder="Email" />
+              <input type="text" [(ngModel)]="attendeeDraft.role" placeholder="Role" />
+              <button class="micro-button" type="button" (click)="addAttendeeToSelectedMeeting()">Add</button>
+            </div>
+          </div>
+
+          <div class="section-card transcript-editor">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Transcript</p>
+                <h4>Source text</h4>
+              </div>
+              <button class="micro-button" type="button" (click)="useSampleForSelectedTranscript()">Use sample</button>
+            </div>
+
+            <textarea [(ngModel)]="transcriptDraft" placeholder="Paste or edit the transcript"></textarea>
+
+            <div class="button-row compact-row">
+              <button class="soft-button" type="button" (click)="saveTranscript()" [disabled]="savingTranscript">
+                {{ savingTranscript ? 'Saving…' : 'Save transcript' }}
+              </button>
+              <button class="primary-button" type="button" (click)="processSelectedMeeting(false)" [disabled]="isProcessing(selectedMeeting)">
+                <span class="sparkle">✦</span>
+                {{ isProcessing(selectedMeeting) ? 'Generating…' : 'Generate minutes' }}
+              </button>
+              <button class="ghost-button" type="button" (click)="processSelectedMeeting(true)" [disabled]="isProcessing(selectedMeeting) || !latestResult">
+                Regenerate
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel result-panel" *ngIf="selectedMeeting">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Output</p>
+            <h3>Generated minutes</h3>
+          </div>
+          <span class="version-badge" *ngIf="latestResult">v{{ latestResult.versionNumber }}</span>
+        </div>
+
+        <div class="empty-state" *ngIf="!latestResult && !isProcessing(selectedMeeting)">
+          <div class="empty-icon">✦</div>
+          <p>No generated minutes yet.</p>
+          <span>Save a transcript, then generate minutes.</span>
+        </div>
+
+        <div class="processing-state" *ngIf="isProcessing(selectedMeeting)">
+          <div class="pulse-ring"><span class="sparkle">✦</span></div>
+          <p>Reading transcript and shaping the minutes…</p>
+          <div class="loading-bar"><span></span></div>
+        </div>
+
+        <div class="result-content" *ngIf="latestResult && !isProcessing(selectedMeeting)">
+          <article class="summary-card">
+            <p class="eyebrow">Summary</p>
+            <h4>{{ latestResult.summary || 'Summary unavailable' }}</h4>
+          </article>
+
+          <div class="result-grid">
+            <article class="result-block" *ngIf="lines(latestResult.detailedSummary).length > 0">
+              <p class="eyebrow">Details</p>
+              <ul>
+                <li *ngFor="let line of lines(latestResult.detailedSummary)">{{ line }}</li>
+              </ul>
+            </article>
+
+            <article class="result-block" *ngIf="lines(latestResult.keyDiscussionPoints).length > 0">
+              <p class="eyebrow">Discussion points</p>
+              <ul>
+                <li *ngFor="let line of lines(latestResult.keyDiscussionPoints)">{{ line }}</li>
+              </ul>
+            </article>
+
+            <article class="result-block" *ngIf="lines(latestResult.decisions).length > 0">
+              <p class="eyebrow">Decisions</p>
+              <ul>
+                <li *ngFor="let line of lines(latestResult.decisions)">{{ line }}</li>
+              </ul>
+            </article>
+
+            <article class="result-block" *ngIf="lines(latestResult.followUpNotes).length > 0">
+              <p class="eyebrow">Follow-up notes</p>
+              <ul>
+                <li *ngFor="let line of lines(latestResult.followUpNotes)">{{ line }}</li>
+              </ul>
+            </article>
+          </div>
+
+          <section class="action-section">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Next steps</p>
+                <h4>Action items</h4>
+              </div>
+              <span class="count-badge">{{ actionItems.length }}</span>
+            </div>
+
+            <div class="action-list" *ngIf="actionItems.length > 0; else noActions">
+              <article class="action-card" *ngFor="let action of actionItems; trackBy: trackById">
+                <ng-container *ngIf="editingActionId !== action.id; else editAction">
+                  <div class="action-main">
+                    <span class="status-dot" [ngClass]="statusClass(action.status)"></span>
+                    <div>
+                      <h5>{{ action.description }}</h5>
+                      <p>
+                        {{ action.proposedAssignee || 'Unassigned' }}
+                        <span *ngIf="action.deadline">· {{ action.deadline | date:'MMM d, y' }}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div class="action-controls">
+                    <span class="status-pill" [ngClass]="statusClass(action.status)">{{ action.status }}</span>
+                    <button class="micro-button" type="button" (click)="beginEditAction(action)">Edit</button>
+                  </div>
+                </ng-container>
+
+                <ng-template #editAction>
+                  <div class="edit-grid">
+                    <input type="text" [(ngModel)]="actionEditDraft.description" />
+                    <input type="text" [(ngModel)]="actionEditDraft.proposedAssignee" placeholder="Assignee" />
+                    <input type="date" [(ngModel)]="actionEditDraft.deadline" />
+                    <select [(ngModel)]="actionEditDraft.status">
+                      <option *ngFor="let status of actionStatuses" [value]="status">{{ status }}</option>
+                    </select>
+                    <button class="soft-button" type="button" (click)="saveActionItem(action)" [disabled]="savingActionId === action.id">
+                      {{ savingActionId === action.id ? 'Saving…' : 'Save' }}
+                    </button>
+                    <button class="ghost-button" type="button" (click)="cancelEditAction()">Cancel</button>
+                  </div>
+                </ng-template>
+              </article>
+            </div>
+          </section>
+
+          <section class="history-strip" *ngIf="resultHistory.length > 0">
+            <p class="eyebrow">Versions</p>
+            <div>
+              <button
+                type="button"
+                *ngFor="let result of resultHistory; trackBy: trackById"
+                [class.active]="latestResult.id === result.id"
+                (click)="showHistoryResult(result)">
+                v{{ result.versionNumber }}
+              </button>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <details class="panel prompt-panel">
+        <summary>
+          <span>
+            <small class="eyebrow">Configuration</small>
+            <strong>Prompt template</strong>
+          </span>
+          <span class="summary-icon">⌄</span>
+        </summary>
+
+        <div class="prompt-body">
+          <label class="field">
+            <span>Name</span>
+            <input type="text" [(ngModel)]="promptDraft.name" />
+          </label>
+          <label class="field">
+            <span>Template</span>
+            <textarea [(ngModel)]="promptDraft.promptText" placeholder="Instructions used when generating meeting minutes"></textarea>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" [(ngModel)]="promptDraft.active" />
+            <span>Use as active template</span>
+          </label>
+          <button class="soft-button" type="button" (click)="savePromptTemplate()" [disabled]="savingPrompt">
+            {{ savingPrompt ? 'Saving…' : 'Save template' }}
+          </button>
+        </div>
+      </details>
+    </section>
+  </main>
+</div>
+
+<ng-template #noSelection>
+  <section class="panel detail-panel placeholder-panel">
+    <div class="empty-state">
+      <div class="empty-icon">◇</div>
+      <p>Select or create a meeting.</p>
+      <span>The workspace will show transcript, participants, generated minutes and action items.</span>
     </div>
   </section>
-</main>
+</ng-template>
+
+<ng-template #detailSkeleton>
+  <div class="skeleton-stack">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</ng-template>
+
+<ng-template #noActions>
+  <div class="empty-state compact">
+    <div class="empty-icon">✓</div>
+    <p>No action items found.</p>
+    <span>Regenerate minutes after editing the transcript if tasks are missing.</span>
+  </div>
+</ng-template>
